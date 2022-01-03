@@ -1,0 +1,76 @@
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+
+
+apr <- read_csv("OD_2021_04.csv")
+may <- read_csv("OD_2021_05.csv")
+jun <- read_csv("OD_2021_06.csv")
+jul <- read_csv("OD_2021_07.csv")
+aug <- read_csv("OD_2021_08.csv")
+sep <- read_csv("OD_2021_09.csv")
+oct <- read_csv("OD_2021_10.csv")
+stations <- read_csv("stations_10_5.csv")
+
+consolidated = rbind(apr,may,jun,jul,aug,sep,oct)
+
+#merged <- merge(consolidated, stations, by.x ="emplacement_pk_start",by.y = "pk" )
+
+# merged %>%   rename(
+#     start_location_id = emplacement_pk_start,
+#     end_location_id = emplacement_pk_end,
+#     start_location_name = name,
+#     start_latitude = latitude,
+#     start_longitude = longitude)
+
+consolidated$route <- paste(consolidated$emplacement_pk_start, consolidated$emplacement_pk_end, sep= "-")
+
+total_number_of_trips <- length(consolidated$start_date)
+
+#Percentage of rides taken by both types of users
+consolidated %>% 
+  drop_na() %>% 
+  count(is_member) %>% 
+  mutate(percent = n/sum(n)) %>% 
+  rename(count = n) %>% 
+  
+
+#top 10 most popular routes overall
+top_routes <- consolidated %>% 
+  count(route) %>% 
+  arrange(desc(n)) %>% 
+  top_n(10) %>% 
+  rename(count = n) %>% 
+  ggplot(., aes(x=route,y=count))+
+  geom_col(fill="dodgerblue")
+
+#top_routes
+head(consolidated$route)
+#top 10 most popular routes among members
+top_routes_members <- consolidated %>% 
+  filter(is_member == 1) %>% 
+  count(route) %>% 
+  arrange(desc(n)) %>% 
+  top_n(10)
+#top 10 most popular routes among occasional riders
+top_routes_occasional <- consolidated %>% 
+  filter(is_member == 0) %>% 
+  count(route) %>% 
+  arrange(desc(n)) %>% 
+  top_n(10)
+
+# Usage variation by weekday & month
+weekday_month <- consolidated %>% 
+  count(day = wday(start_date, label = TRUE),
+        month = month(start_date, label = TRUE),
+        name = "Count") %>% 
+  ggplot() +
+  geom_tile(aes(x = day, y = factor(month), fill = Count)) +
+  labs(x = "Day", y = "month") +
+  guides(fill = guide_colorbar(title = "Count")) +
+  theme_classic() +
+  scale_fill_viridis_c()
+
+weekday_month
+
